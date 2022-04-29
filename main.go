@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/spf13/viper"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -57,12 +59,47 @@ func nationalHolidays(current time.Time) []int {
 	return ret
 }
 
+type Config struct {
+	From struct {
+		Hour int
+		Min  int
+	}
+	To struct {
+		Hour int
+		Min  int
+	}
+}
+
+var config Config
+
+func readConfig() error {
+	// viper
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(".")
+	err := viper.ReadInConfig()
+	if err != nil {
+		return errors.New("cannot find config")
+	}
+	err = viper.Unmarshal(&config)
+	if err != nil {
+		return errors.New("invalid config")
+	}
+	return nil
+}
+
 func main() {
 	// seed
 	rand.Seed(time.Now().UnixNano())
 
 	n := time.Now()
 	y, m, _ := n.Date()
+
+	err := readConfig()
+	if err != nil {
+		println(err.Error())
+		return
+	}
 
 	nationalHolidays := nationalHolidays(n)
 
@@ -86,11 +123,11 @@ func main() {
 			data = append(data, "\t\t")
 			continue
 		}
-		data = append(data, fmt.Sprintf("%s\t%s\t%s", genRandomizeTime(8, 40), genRandomizeTime(18, 0), "1:00:00"))
+		data = append(data, fmt.Sprintf("%s\t%s\t%s", genRandomizeTime(config.From.Hour, config.From.Min), genRandomizeTime(config.To.Hour, config.To.Min), "1:00:00"))
 	}
 
 	fmt.Println("Copied working times in this month, lets copy into Google Spreadsheet")
-	err := clipboard.WriteAll(strings.Join(data, "\n"))
+	err = clipboard.WriteAll(strings.Join(data, "\n"))
 	if err != nil {
 		fmt.Println("Coping into clipboard is failed")
 		return
