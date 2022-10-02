@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -88,14 +90,44 @@ func readConfig() error {
 	return nil
 }
 
+func yearAndMonth(arg string) (time.Time, error) {
+	var t time.Time
+	if arg == "" {
+		t = time.Now()
+	} else {
+		yearAndMonth := strings.Split(arg, "-")
+		if len(yearAndMonth) != 2 {
+			return t, errors.New("invalid argument. plz enter yyyy-mm for target month")
+		}
+		year, err := strconv.Atoi(yearAndMonth[0])
+		if err != nil {
+			return t, err
+		}
+		month, err := strconv.Atoi(yearAndMonth[1])
+		if err != nil {
+			return t, err
+		}
+		t = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+	}
+	println(t.Format(time.UnixDate))
+	return t, nil
+}
+
 func main() {
 	// seed
 	rand.Seed(time.Now().UnixNano())
 
-	n := time.Now()
-	y, m, _ := n.Date()
-
 	err := readConfig()
+	if err != nil {
+		println(err.Error())
+		return
+	}
+
+	arg := ""
+	if len(os.Args[1:]) > 0 {
+		arg = os.Args[1]
+	}
+	n, err := yearAndMonth(arg)
 	if err != nil {
 		println(err.Error())
 		return
@@ -104,6 +136,8 @@ func main() {
 	nationalHolidays := nationalHolidays(n)
 
 	var data []string
+	y := n.Year()
+	m := n.Month()
 	for i := 1; i < 31; i++ {
 		current := time.Date(y, m, i, 0, 0, 0, 0, time.Local)
 		if current.Month() > m {
@@ -126,7 +160,8 @@ func main() {
 		data = append(data, fmt.Sprintf("%s\t%s\t%s", genRandomizeTime(config.From.Hour, config.From.Min), genRandomizeTime(config.To.Hour, config.To.Min), "1:00:00"))
 	}
 
-	fmt.Println("Copied working times in this month, lets copy into Google Spreadsheet")
+	targetYM := n.Format("2006/01")
+	fmt.Printf("Generated working times in %s, lets copy into Google Spreadsheet\n", targetYM)
 	err = clipboard.WriteAll(strings.Join(data, "\n"))
 	if err != nil {
 		fmt.Println("Coping into clipboard is failed")
