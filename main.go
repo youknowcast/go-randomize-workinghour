@@ -138,7 +138,7 @@ func main() {
 	var data []string
 	y := n.Year()
 	m := n.Month()
-	for i := 1; i < 31; i++ {
+	for i := 1; i <= 31; i++ {
 		current := time.Date(y, m, i, 0, 0, 0, 0, time.Local)
 		if current.Month() > m {
 			break
